@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "com.topi_banana.unitemplate.fabric.mixins",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "example.MinecraftServerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

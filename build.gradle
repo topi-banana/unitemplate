@@ -1,0 +1,85 @@
+plugins {
+    id "java"
+    id "systems.manifold.manifold-gradle-plugin" version "0.0.2-alpha"
+}
+
+project.gradle.ext.getProperties().each { prop ->
+    rootProject.ext.set(prop.key, prop.value)
+    //println "Added prop [key:" + prop.key + ", value:" + prop.value + "]"
+}
+
+subprojects { p ->
+    def isMinecraftSubProject = p != project(":core")
+
+    apply plugin: 'java'
+    if (isMinecraftSubProject)
+        apply plugin: "systems.manifold.manifold-gradle-plugin"
+
+    manifold {
+        manifoldVersion = rootProject.manifold_version
+    }
+
+
+    dependencies {
+        if (isMinecraftSubProject) {
+            annotationProcessor "systems.manifold:manifold-preprocessor:${rootProject.manifold_version}"
+        }
+        annotationProcessor "systems.manifold:manifold-strings:${rootProject.manifold_version}"
+        testAnnotationProcessor "systems.manifold:manifold-strings:${rootProject.manifold_version}"
+    }
+}
+
+allprojects { p ->
+    def isMinecraftSubProject = p != project(":core")
+
+    apply plugin: 'java'
+
+    archivesBaseName = rootProject.mod_name
+    version = project.name + "-" + rootProject.mod_version
+    group = rootProject.maven_group + p.name
+
+    tasks.withType(JavaCompile).configureEach {
+        it.options.release = 21
+    }
+
+    java {
+        withSourcesJar()
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+
+    jar {
+        from("LICENSE") {
+            rename { "${it}_${project.base.archivesName.get()}"}
+        }
+    }
+
+    repositories {
+        maven { url "https://libraries.minecraft.net/" }
+        maven { url "https://jitpack.io" }
+        maven {
+            name = "Modrinth"
+            url = "https://api.modrinth.com/maven"
+            content {
+                includeGroup "maven.modrinth"
+            }
+        }
+
+        tasks.withType(JavaCompile) {
+            if (isMinecraftSubProject) {
+                options.release = rootProject.java_version as Integer
+            } else {
+                options.release = 8; // Core & Api should use Java 8 no matter what
+                //options.release = rootProject.java_version as Integer // But if you want to test some stuff, then this can be enabled
+            }
+            options.compilerArgs += ["-Xplugin:Manifold"]
+            options.encoding = "UTF-8"
+        }
+
+        mavenCentral()
+    }
+
+    dependencies {
+        implementation 'org.slf4j:slf4j-api:2.0.16'
+    }
+}
