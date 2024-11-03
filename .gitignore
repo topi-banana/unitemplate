@@ -39,4 +39,7 @@ bin/
 .DS_Store
 
 **/run
+
+## preprocessor
 **/src/main/generated
+build.properties

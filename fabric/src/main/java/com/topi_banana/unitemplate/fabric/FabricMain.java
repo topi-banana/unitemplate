@@ -29,5 +29,10 @@ public class FabricMain implements ModInitializer, ClientModInitializer, Dedicat
         MOD_NAME = metadata.getName();
         MOD_VERSION = metadata.getVersion().getFriendlyString();
         LOGGER.info("hello from unitemplate");
+	    #if MC_VER >= 12103
+            LOGGER.info("MC_VERSION>=12103");
+        #else
+            LOGGER.info("MC_VERSION<12103");
+        #endif
     }
 }

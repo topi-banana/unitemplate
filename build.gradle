@@ -8,6 +8,14 @@ project.gradle.ext.getProperties().each { prop ->
     //println "Added prop [key:" + prop.key + ", value:" + prop.value + "]"
 }
 
+StringBuilder sb = new StringBuilder();
+
+sb.append("# DON'T TOUCH THIS FILE, This is handled by the build script\n");
+sb.append("MC_VER=${rootProject.minecraft_version}\n");
+sb.append("JAVA_VER=${rootProject.java_version}\n");
+
+new File(projectDir, "build.properties").text = sb.toString()
+
 subprojects { p ->
     def isMinecraftSubProject = p != project(":core")
 
@@ -21,9 +29,7 @@ subprojects { p ->
 
 
     dependencies {
-        if (isMinecraftSubProject) {
-            annotationProcessor "systems.manifold:manifold-preprocessor:${rootProject.manifold_version}"
-        }
+        annotationProcessor "systems.manifold:manifold-preprocessor:${rootProject.manifold_version}"
         annotationProcessor "systems.manifold:manifold-strings:${rootProject.manifold_version}"
         testAnnotationProcessor "systems.manifold:manifold-strings:${rootProject.manifold_version}"
     }
@@ -39,7 +45,13 @@ allprojects { p ->
     group = rootProject.maven_group + p.name
 
     tasks.withType(JavaCompile).configureEach {
-        it.options.release = 21
+        if (isMinecraftSubProject) {
+            options.release = rootProject.java_version as Integer
+        } else {
+            options.release = 8;
+        }
+        options.compilerArgs += ["-Xplugin:Manifold"]
+        options.encoding = "UTF-8"
     }
 
     java {
@@ -64,18 +76,6 @@ allprojects { p ->
                 includeGroup "maven.modrinth"
             }
         }
-
-        tasks.withType(JavaCompile) {
-            if (isMinecraftSubProject) {
-                options.release = rootProject.java_version as Integer
-            } else {
-                options.release = 8; // Core & Api should use Java 8 no matter what
-                //options.release = rootProject.java_version as Integer // But if you want to test some stuff, then this can be enabled
-            }
-            options.compilerArgs += ["-Xplugin:Manifold"]
-            options.encoding = "UTF-8"
-        }
-
         mavenCentral()
     }
 
