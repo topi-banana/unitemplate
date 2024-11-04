@@ -12,6 +12,8 @@ loom {
 }
 
 dependencies {
+    implementation project(':core')
+
     minecraft "com.mojang:minecraft:${rootProject.fabric_minecraft_version}"
     mappings "net.fabricmc:yarn:${rootProject.fabric_yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"

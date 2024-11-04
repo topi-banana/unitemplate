@@ -1,0 +1,15 @@
+plugins {
+    id 'xyz.jpenilla.run-paper' version '2.3.1'
+}
+
+tasks {
+    runServer {
+        minecraftVersion(rootProject.paper_minecraft_version)
+    }
+}
+
+dependencies {
+    implementation project(':core')
+
+    compileOnly "io.papermc.paper:paper-api:${rootProject.paper_api_version}"
+}

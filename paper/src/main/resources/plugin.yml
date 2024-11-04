@@ -1,0 +1,7 @@
+name: ExamplePlugin
+version: 1.0.0
+main: com.topi_banana.unitemplate.paper.PaperMain
+description: An example plugin
+author: PaperMC
+website: https://papermc.io
+api-version: '1.21.3'
