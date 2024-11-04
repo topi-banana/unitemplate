@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "unitemplate",
   "version": "${version}",
-  "name": "Example mod",
+  "name": "UniTemplate",
   "description": "This is an example description! Tell everyone what your mod is about!",
   "authors": [
     "topi_banana"

@@ -1,5 +1,6 @@
 plugins {
     id 'xyz.jpenilla.run-paper' version '2.3.1'
+    id 'io.papermc.paperweight.userdev' version '1.7.4'
 }
 
 tasks {
@@ -12,4 +13,6 @@ dependencies {
     implementation project(':core')
 
     compileOnly "io.papermc.paper:paper-api:${rootProject.paper_api_version}"
+    compileOnly "io.netty:netty-transport-native-epoll:4.1.97.Final"
+    paperweight.paperDevBundle(rootProject.paper_api_version)
 }
