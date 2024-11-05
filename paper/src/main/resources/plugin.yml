@@ -1,7 +1,7 @@
-name: UniTemplate
-version: 1.0.0
+name: ${mod_name}
+version: ${version}
 main: com.topi_banana.unitemplate.paper.PaperMain
-description: An example plugin
-author: topi_banana
-website: https://papermc.io
-api-version: '1.21.3'
+description: ${description}
+author: ${authors}
+website: ${homepage}
+api-version: ${minecraft_version}

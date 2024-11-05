@@ -5,7 +5,7 @@ plugins {
 loom {
     def commonVmArgs = ['-Dmixin.debug.export=true', '-Dmixin.debug.countInjections=true']
     runConfigs.configureEach {
-        ideConfigGenerated = true
+        ideConfigGenerated = false
         runDir './run'
         vmArgs commonVmArgs
     }

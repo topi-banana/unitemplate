@@ -60,6 +60,36 @@ allprojects { p ->
         targetCompatibility = JavaVersion.VERSION_21
     }
 
+    processResources {
+        def resourceTargets = [ // Fabric
+                                "fabric.mod.json",
+                                "unitemplate.mixins.json",
+                                "unitemplate.client.mixins.json",
+
+                                // Paper
+                                "plugin.yml",
+        ]
+        def replaceProperties = [
+                version                      : mod_version,
+                mod_id                       : mod_id,
+                mod_name                     : mod_name,
+                authors                      : mod_authors,
+                description                  : mod_description,
+                homepage                     : mod_homepage,
+                source                       : mod_source,
+                issues                       : mod_issues,
+                discord                      : mod_discord,
+                minecraft_version            : minecraft_version,
+                minecraft_dependency         : minecraft_dependency,
+                java_version                 : java_version,
+        ]
+
+        filesMatching(resourceTargets) {
+            expand replaceProperties
+        }
+
+    }
+
     jar {
         from("LICENSE") {
             rename { "${it}_${project.base.archivesName.get()}"}

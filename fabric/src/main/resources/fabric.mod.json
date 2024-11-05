@@ -1,15 +1,16 @@
 {
   "schemaVersion": 1,
-  "id": "unitemplate",
+  "id": "${mod_id}",
   "version": "${version}",
-  "name": "UniTemplate",
-  "description": "This is an example description! Tell everyone what your mod is about!",
+  "name": "${mod_name}",
+  "description": "${description}",
   "authors": [
-    "topi_banana"
+    "${authors}"
   ],
   "contact": {
-    "homepage": "https://topi-banana.com/",
-    "sources": "https://github.com/topi-banana/unitemplate"
+    "homepage": "${homepage}",
+    "sources": "${source}",
+    "issues": "${issues}"
   },
   "license": "CC0-1.0",
   "icon": "assets/unitemplate/icon.png",
@@ -33,12 +34,7 @@
     }
   ],
   "depends": {
-    "fabricloader": ">=0.16.7",
-    "minecraft": "~1.21.3",
-    "java": ">=21",
-    "fabric-api": "*"
-  },
-  "suggests": {
-    "another-mod": "*"
+    "minecraft": "${minecraft_dependency}",
+    "java": ">=${java_version}"
   }
 }

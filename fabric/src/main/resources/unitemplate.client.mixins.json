@@ -1,7 +1,7 @@
 {
   "required": true,
   "package": "com.topi_banana.unitemplate.fabric.client.mixins",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_${java_version}",
   "mixins": [
     "example.MinecraftClientMixin"
   ],
