@@ -1,3 +1,5 @@
+import groovy.json.JsonSlurper
+
 pluginManagement {
     repositories {
         maven {
@@ -5,56 +7,31 @@ pluginManagement {
             url = 'https://maven.fabricmc.net/'
         }
         maven {
-            url = 'https://repo.papermc.io/repository/maven-public/'
+            name = 'Jitpack'
+            url = 'https://jitpack.io'
         }
+        maven { url "https://maven.architectury.dev/" }
+        maven { url "https://files.minecraftforge.net/maven/" }
         mavenCentral()
         gradlePluginPortal()
     }
+    resolutionStrategy {
+        eachPlugin {
+            switch (requested.id.id) {
+                case "com.replaymod.preprocess": {
+                    useModule("com.github.Fallen-Breath:preprocessor:${requested.version}")
+                    break
+                }
+            }
+        }
+    }
 }
 
-def loadProperties() {
-    def defaultMcVersion = "1.21.3"
+def settings = new JsonSlurper().parseText(file('settings.json').text)
+for (String version : settings.versions) {
+    include(":$version")
 
-    def mcVersion = ""
-    def mcVers = fileTree("versionProperties").files.name // Get all the files in "versionProperties"
-    for (int i = 0; i < mcVers.size(); i++) {
-        mcVers[i] = mcVers[i].replaceAll("\\.properties", "") // As we are getting the file names, we should remove the ".properties" at the end to get the versions
-    }
-
-    mcVers.sort() // Sort so it always goes from oldest to newest
-
-    int mcIndex = -1
-    println "Avalible MC versions: ${mcVers}"
-    if (hasProperty("mcVer")) {
-        mcVersion = mcVer
-        mcIndex = mcVers.indexOf(mcVer)
-    }
-    if (mcIndex == -1) {
-        println "No mcVer set or the set mcVer is invalid! Defaulting to ${defaultMcVersion}."
-        println "Tip: Use -PmcVer=\"${defaultMcVersion}\" in cmd arg to set mcVer."
-        mcVersion = defaultMcVersion
-        mcIndex = mcVers.indexOf(defaultMcVersion)
-        assert mcIndex != -1
-    }
-
-    println "Loading properties file at " + mcVersion + ".properties"
-    def props = new Properties()
-    props.load(new FileInputStream("$rootDir/versionProperties/"+"$mcVersion"+".properties"))
-
-    props.each { prop ->
-        gradle.ext.set(prop.key, prop.value)
-        // println "Added prop [key:" + prop.key + ", value:" + prop.value + "]"
-    }
-    gradle.ext.mcVers = mcVers
-    gradle.ext.mcIndex = mcIndex
-
+    def proj = project(":$version")
+    proj.projectDir = file("versions/$version")
+    proj.buildFileName = "../../common.gradle"
 }
-loadProperties()
-
-include 'core'
-
-for (loader in ((String) gradle.builds_for).split(",")) {
-    include "${loader.strip()}"
-}
-
-rootProject.name = "UniTemplate"

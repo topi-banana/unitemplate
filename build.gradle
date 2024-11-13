@@ -1,116 +1,65 @@
 plugins {
-    id "java"
-    id "systems.manifold.manifold-gradle-plugin" version "0.0.2-alpha"
+    id 'maven-publish'
+    id 'com.github.hierynomus.license' version '0.16.1' apply false
+    id 'dev.architectury.loom' version '1.7-SNAPSHOT' apply false
+
+    // https://github.com/ReplayMod/preprocessor
+    // https://github.com/Fallen-Breath/preprocessor
+    id 'com.replaymod.preprocess' version 'ce1aeb2b'
+
+    // https://github.com/Fallen-Breath/yamlang
+    id 'me.fallenbreath.yamlang' version '1.4.0' apply false
 }
 
-project.gradle.ext.getProperties().each { prop ->
-    rootProject.ext.set(prop.key, prop.value)
-    //println "Added prop [key:" + prop.key + ", value:" + prop.value + "]"
+preprocess {
+    def fabric_mc12004 = createNode('fabric-1.20.4', 1_20_04, '')
+    def fabric_mc12006 = createNode('fabric-1.20.6', 1_20_06, '')
+    def fabric_mc12103 = createNode('fabric-1.21.3', 1_21_03, '')
+
+    def forge_mc12004 = createNode('forge-1.20.4', 1_20_04, '')
+    def forge_mc12006 = createNode('forge-1.20.6', 1_20_06, '')
+    def forge_mc12103 = createNode('forge-1.21.3', 1_21_03, '')
+
+    def neoforge_mc12006 = createNode('neoforge-1.20.6', 1_20_06, '')
+    def neoforge_mc12103 = createNode('neoforge-1.21.3', 1_21_03, '')
+
+    // fabric
+    fabric_mc12004.link(fabric_mc12006, null)
+    fabric_mc12006.link(fabric_mc12103, null)
+
+    // forge
+    fabric_mc12004.link(forge_mc12004, null)
+
+    forge_mc12004.link(forge_mc12006, null)
+    forge_mc12006.link(forge_mc12103, null)
+
+    // neoforge
+    fabric_mc12006.link(neoforge_mc12006, null)
+
+    neoforge_mc12006.link(neoforge_mc12103, null)
 }
 
-StringBuilder sb = new StringBuilder();
-
-sb.append("# DON'T TOUCH THIS FILE, This is handled by the build script\n");
-sb.append("MC_VER=${rootProject.minecraft_version}\n");
-sb.append("JAVA_VER=${rootProject.java_version}\n");
-
-new File(projectDir, "build.properties").text = sb.toString()
-
-subprojects { p ->
-    def isMinecraftSubProject = p != project(":core")
-
-    apply plugin: 'java'
-    if (isMinecraftSubProject)
-        apply plugin: "systems.manifold.manifold-gradle-plugin"
-
-    manifold {
-        manifoldVersion = rootProject.manifold_version
+tasks.register('buildAndGather') {
+    subprojects {
+        dependsOn project.tasks.named('build').get()
     }
-
-
-    dependencies {
-        annotationProcessor "systems.manifold:manifold-preprocessor:${rootProject.manifold_version}"
-        annotationProcessor "systems.manifold:manifold-strings:${rootProject.manifold_version}"
-        testAnnotationProcessor "systems.manifold:manifold-strings:${rootProject.manifold_version}"
-    }
-}
-
-allprojects { p ->
-    def isMinecraftSubProject = p != project(":core")
-
-    apply plugin: 'java'
-
-    archivesBaseName = rootProject.mod_name
-    version = project.name + "-" + rootProject.mod_version
-    group = rootProject.maven_group + p.name
-
-    tasks.withType(JavaCompile).configureEach {
-        if (isMinecraftSubProject) {
-            options.release = rootProject.java_version as Integer
-        } else {
-            options.release = 8;
+    doFirst {
+        println 'Gathering builds'
+        def buildLibs = {
+            p -> p.buildDir.toPath().resolve('libs')
         }
-        options.compilerArgs += ["-Xplugin:Manifold"]
-        options.encoding = "UTF-8"
-    }
-
-    java {
-        withSourcesJar()
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-    }
-
-    processResources {
-        def resourceTargets = [ // Fabric
-                                "fabric.mod.json",
-                                "unitemplate.mixins.json",
-                                "unitemplate.client.mixins.json",
-
-                                // Paper
-                                "plugin.yml",
-        ]
-        def replaceProperties = [
-                version                      : mod_version,
-                mod_id                       : mod_id,
-                mod_name                     : mod_name,
-                authors                      : mod_authors,
-                description                  : mod_description,
-                homepage                     : mod_homepage,
-                source                       : mod_source,
-                issues                       : mod_issues,
-                discord                      : mod_discord,
-                minecraft_version            : minecraft_version,
-                minecraft_dependency         : minecraft_dependency,
-                java_version                 : java_version,
-        ]
-
-        filesMatching(resourceTargets) {
-            expand replaceProperties
+        delete fileTree(buildLibs(rootProject)) {
+            include '*'
         }
-
-    }
-
-    jar {
-        from("LICENSE") {
-            rename { "${it}_${project.base.archivesName.get()}"}
-        }
-    }
-
-    repositories {
-        maven { url "https://jitpack.io" }
-        maven {
-            name = "Modrinth"
-            url = "https://api.modrinth.com/maven"
-            content {
-                includeGroup "maven.modrinth"
+        subprojects {
+            copy {
+                from(buildLibs(project)) {
+                    include '*.jar'
+                    exclude '*-dev.jar', '*-sources.jar'
+                }
+                into buildLibs(rootProject)
+                duplicatesStrategy DuplicatesStrategy.INCLUDE
             }
         }
-        maven { url "https://repo.papermc.io/repository/maven-public/" }
-        mavenCentral()
-        maven { url "https://libraries.minecraft.net/" }
-    }
-
-    dependencies {
-        implementation 'org.slf4j:slf4j-api:2.0.16'
     }
 }
