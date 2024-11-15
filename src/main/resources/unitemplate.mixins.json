@@ -2,7 +2,7 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.topi_banana.unitemplate.mixins",
-  "compatibilityLevel": "{{COMPATIBILITY_LEVEL}}",
+  "compatibilityLevel": "${java_compatibility_level}",
   "mixins": [
   ],
   "client": [
