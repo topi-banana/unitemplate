@@ -1,12 +1,16 @@
 plugins {
     id 'java'
+
     // https://github.com/architectury/architectury-loom
     id 'dev.architectury.loom' version '1.7-SNAPSHOT' apply false
+
     // https://docs.papermc.io/paper/dev/userdev
     id 'io.papermc.paperweight.userdev' version '1.7.4' apply false
+    // https://github.com/jpenilla/run-task
+    id 'xyz.jpenilla.run-paper' version '2.3.1' apply false
 
     // https://github.com/Fallen-Breath/yamlang
-    id 'me.fallenbreath.yamlang' version '1.4.0'
+//    id 'me.fallenbreath.yamlang' version '1.4.0'
 }
 
 repositories {
@@ -33,6 +37,7 @@ if (use_architectury_loom) {
 }
 if (use_paperweight) {
     apply plugin: 'io.papermc.paperweight.userdev'
+    apply plugin: 'xyz.jpenilla.run-paper'
 }
 
 Number convertVersion(String version) {
@@ -49,7 +54,7 @@ String MOD_ICON_PATH = 'assets/unitemplate/icon.png'
 String MIXIN_CONFIG_PATH = 'unitemplate.mixins.json'
 String LANG_DIR = 'assets/unitemplate/lang'
 JavaVersion JAVA_COMPATIBILITY
-if (mcVersion >= 12005 && !(mcVersion < 12100 && project.platform == 'forge')) {
+if (mcVersion >= 12005) {
     JAVA_COMPATIBILITY = JavaVersion.VERSION_21
 } else if (mcVersion >= 11800) {
     JAVA_COMPATIBILITY = JavaVersion.VERSION_17
@@ -61,10 +66,38 @@ if (mcVersion >= 12005 && !(mcVersion < 12100 && project.platform == 'forge')) {
 JavaVersion MIXIN_COMPATIBILITY_LEVEL = JAVA_COMPATIBILITY
 
 
+String modVersionSuffix = ''
+String artifactVersion = project.mod_version
+String artifactVersionSuffix = ''
+// detect github action environment variables
+// https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
+if (System.getenv("BUILD_RELEASE") != "true") {
+    String buildNumber = System.getenv("BUILD_ID")
+    modVersionSuffix += buildNumber != null ? ('+build.' + buildNumber) : '-SNAPSHOT'
+    artifactVersionSuffix = '-SNAPSHOT'  // A non-release artifact is always a SNAPSHOT artifact
+}
+String fullModVersion = project.mod_version + modVersionSuffix
+String fullProjectVersion = "v${artifactVersion}-mc${project.minecraft_version}-${project.platform}${modVersionSuffix}"
+String fullArtifactVersion = "${artifactVersion}-mc${project.minecraft_version}-${project.platform}${artifactVersionSuffix}"
+// Example version values:
+//   artifactVersion         1.0.3                             (the base mod version)
+//   modVersionSuffix        +build.88                         (use github action build number if possible)
+//   artifactVersionSuffix   -SNAPSHOT
+//   fullModVersion          1.0.3+build.88                    (the actual mod version to use in the mod)
+//   fullProjectVersion      v1.0.3-mc1.15.2-fabric+build.88   (in build output jar name)
+//   fullArtifactVersion     1.0.3-mc1.15.2-fabric-SNAPSHOT    (maven artifact version)
+
+
+
+version = fullModVersion
+group = project.maven_group
+base { archivesName.set("${project.mod_id}-${project.platform}") }
+
 stonecutter.const('FABRIC', project.platform == 'fabric')
 stonecutter.const('QUILT', project.platform == 'quilt')
 stonecutter.const('FORGE', project.platform == 'forge')
 stonecutter.const('NEOFORGE', project.platform == 'neoforge')
+stonecutter.const('PAPER', project.platform == 'paper')
 
 
 if (use_architectury_loom) {
@@ -100,7 +133,7 @@ dependencies {
         neoForge "net.neoforged:neoforge:${project.neoforge_version}"
     }
     if (project.platform == 'paper') {
-//        compileOnly "io.papermc.paper:paper-api:${project.minecraft_version}-R0.1-SNAPSHOT"
+        compileOnly "io.papermc.paper:paper-api:${project.minecraft_version}-R0.1-SNAPSHOT"
     }
 }
 
@@ -110,7 +143,6 @@ if (use_architectury_loom) {
         runConfigs.configureEach {
             // to make sure it generates all "Minecraft Client (:subproject_name)" applications
             ideConfigGenerated = true
-            runDir '../../run'
             vmArgs commonVmArgs
         }
 
@@ -124,26 +156,6 @@ if (use_architectury_loom) {
         remapperIsolation = true
     }
 }
-
-String modVersionSuffix = ''
-String artifactVersion = project.mod_version
-String artifactVersionSuffix = ''
-// detect github action environment variables
-// https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
-if (System.getenv("BUILD_RELEASE") != "true") {
-    String buildNumber = System.getenv("BUILD_ID")
-    modVersionSuffix += buildNumber != null ? ('+build.' + buildNumber) : '-SNAPSHOT'
-    artifactVersionSuffix = '-SNAPSHOT'  // A non-release artifact is always a SNAPSHOT artifact
-}
-String fullModVersion = project.mod_version + modVersionSuffix
-String fullProjectVersion, fullArtifactVersion
-// Example version values:
-//   project.mod_version     1.0.3                             (the base mod version)
-//   modVersionSuffix        +build.88                         (use github action build number if possible)
-//   artifactVersionSuffix   -SNAPSHOT
-//   fullModVersion          1.0.3+build.88                    (the actual mod version to use in the mod)
-//   fullProjectVersion      v1.0.3-mc1.15.2-fabric+build.88   (in build output jar name)
-//   fullArtifactVersion     1.0.3-mc1.15.2-fabric-SNAPSHOT    (maven artifact version)
 
 processResources {
     inputs.property "id", project.mod_id
@@ -195,21 +207,10 @@ processResources {
 }
 
 // https://github.com/Fallen-Breath/yamlang
-yamlang {
-    targetSourceSets = [sourceSets.main]
-    inputDir = LANG_DIR
-}
-
-if (use_paperweight) {
-    tasks.assemble {
-        dependsOn(tasks.reobfJar)
-    }
-    tasks.jar {
-        manifest {
-            attributes["paperweight-mappings-namespace"] = "mojang"
-        }
-    }
-}
+//yamlang {
+//    targetSourceSets = [sourceSets.main]
+//    inputDir = LANG_DIR
+//}
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
@@ -224,10 +225,21 @@ java {
     sourceCompatibility = JAVA_COMPATIBILITY
     targetCompatibility = JAVA_COMPATIBILITY
 
+    // Configure the java toolchain. This allows gradle to auto-provision JDK 21 on systems that only have JDK 11 installed for example.
+    toolchain.languageVersion = JavaLanguageVersion.of(JAVA_COMPATIBILITY.ordinal() + 1)
+
     // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
     // if it is present.
     // If you remove this line, sources will not be generated.
     withSourcesJar()
+}
+
+stonecutter {
+    java {
+        withSourcesJar()
+        sourceCompatibility = JAVA_COMPATIBILITY
+        targetCompatibility = JAVA_COMPATIBILITY
+    }
 }
 
 jar {
@@ -236,27 +248,19 @@ jar {
     }
 }
 
-tasks.register('buildAndGather') {
-    subprojects {
-        dependsOn project.tasks.named('build').get()
+if (use_paperweight) {
+    tasks.assemble {
+        dependsOn(tasks.reobfJar)
     }
-    doFirst {
-        println 'Gathering builds'
-        def buildLibs = {
-            p -> p.buildDir.toPath().resolve('libs')
+    tasks {
+        runServer {
+            dependsOn(tasks.assemble)
+            minecraftVersion(project.minecraft_version)
         }
-        delete fileTree(buildLibs(rootProject)) {
-            include '*'
-        }
-        subprojects {
-            copy {
-                from(buildLibs(project)) {
-                    include '*.jar'
-                    exclude '*-dev.jar', '*-sources.jar'
-                }
-                into buildLibs(rootProject)
-                duplicatesStrategy DuplicatesStrategy.INCLUDE
-            }
+        reobfJar {
+            // This is an example of how you might change the output location for reobfJar. It's recommended not to do this
+            // for a variety of reasons, however it's asked frequently enough that an example of how to do it is included here.
+            outputJar = layout.buildDirectory.file("libs/${project.mod_name}-${fullModVersion}.jar")
         }
     }
 }
