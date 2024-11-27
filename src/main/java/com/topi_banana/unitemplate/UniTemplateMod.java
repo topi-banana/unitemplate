@@ -11,7 +11,7 @@ import org.apache.logging.log4j.Logger;
 
 
 //? if FORGE || NEOFORGE
-/* @Mod("fastipping") */
+/* @Mod("unitemplate") */
 public class UniTemplateMod
         //? if FABRIC
         implements net.fabricmc.api.ModInitializer
