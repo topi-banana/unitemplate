@@ -89,9 +89,9 @@ String fullArtifactVersion = "${artifactVersion}-mc${project.minecraft_version}-
 
 
 
-version = fullModVersion
+version = fullProjectVersion
 group = project.maven_group
-base { archivesName.set("${project.mod_id}-${project.platform}") }
+base { archivesName.set("${project.mod_name}") }
 
 stonecutter.const('FABRIC', project.platform == 'fabric')
 stonecutter.const('QUILT', project.platform == 'quilt')
@@ -158,6 +158,8 @@ if (use_architectury_loom) {
 }
 
 processResources {
+    outputs.upToDateWhen { false }
+
     inputs.property "id", project.mod_id
     inputs.property "name", project.mod_name
     inputs.property "version", fullModVersion
@@ -260,7 +262,7 @@ if (use_paperweight) {
         reobfJar {
             // This is an example of how you might change the output location for reobfJar. It's recommended not to do this
             // for a variety of reasons, however it's asked frequently enough that an example of how to do it is included here.
-            outputJar = layout.buildDirectory.file("libs/${project.mod_name}-${fullModVersion}.jar")
+            outputJar = layout.buildDirectory.file("libs/${project.mod_name}-${fullProjectVersion}.jar")
         }
     }
 }
