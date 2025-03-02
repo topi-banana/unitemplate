@@ -23,8 +23,9 @@ public class UniTemplateMod
 
     //? if FABRIC
     @Override public void onInitialize()
-
-    //? if FORGE || NEOFORGE
+    //? if NEOFORGE
+    /* public UniTemplateMod(net.neoforged.bus.api.IEventBus modBus) */
+    //? if FORGE
     /* public UniTemplateMod() */
     //? if PAPER
     /* @Override public void onEnable() */

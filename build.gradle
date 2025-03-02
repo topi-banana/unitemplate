@@ -2,15 +2,17 @@ plugins {
     id 'java'
 
     // https://github.com/architectury/architectury-loom
-    id 'dev.architectury.loom' version '1.7-SNAPSHOT' apply false
+    id 'dev.architectury.loom' version '1.9.426' apply false
 
     // https://docs.papermc.io/paper/dev/userdev
-    id 'io.papermc.paperweight.userdev' version '1.7.4' apply false
+    id 'io.papermc.paperweight.userdev' version '2.0.0-beta.14' apply false
     // https://github.com/jpenilla/run-task
     id 'xyz.jpenilla.run-paper' version '2.3.1' apply false
 
     // https://github.com/Fallen-Breath/yamlang
-//    id 'me.fallenbreath.yamlang' version '1.4.0'
+    id 'me.fallenbreath.yamlang' version '1.4.1'
+
+    id 'com.vulpeus.mod_relocator'
 }
 
 repositories {
@@ -19,6 +21,9 @@ repositories {
     }
     maven {
         url 'https://www.cursemaven.com'
+    }
+    maven {
+        url = "https://api.modrinth.com/maven"
     }
     maven {
         url 'https://maven.neoforged.net/releases'
@@ -40,7 +45,7 @@ if (use_paperweight) {
     apply plugin: 'xyz.jpenilla.run-paper'
 }
 
-Number convertVersion(String version) {
+static Number convertVersion(String version) {
     def parts = version.split('\\.')*.toInteger()
     def major = parts[0] * 10000
     def minor = parts[1] * 100
@@ -48,23 +53,26 @@ Number convertVersion(String version) {
     return major + minor + patch
 }
 
-def mcVersion = convertVersion(project.minecraft_version);
+def mcVersion = convertVersion(project.minecraft_version)
 
 String MOD_ICON_PATH = 'assets/unitemplate/icon.png'
-String MIXIN_CONFIG_PATH = 'unitemplate.mixins.json'
+List<String> MIXIN_CONFIG_PATHS = ['unitemplate.mixins.json']
 String LANG_DIR = 'assets/unitemplate/lang'
 JavaVersion JAVA_COMPATIBILITY
+JavaVersion MIXIN_COMPATIBILITY
 if (mcVersion >= 12005) {
     JAVA_COMPATIBILITY = JavaVersion.VERSION_21
+    MIXIN_COMPATIBILITY = JavaVersion.VERSION_21
 } else if (mcVersion >= 11800) {
     JAVA_COMPATIBILITY = JavaVersion.VERSION_17
+    MIXIN_COMPATIBILITY = JavaVersion.VERSION_17
 } else if (mcVersion >= 11700) {
     JAVA_COMPATIBILITY = JavaVersion.VERSION_16
+    MIXIN_COMPATIBILITY = JavaVersion.VERSION_16
 } else {
     JAVA_COMPATIBILITY = JavaVersion.VERSION_1_8
+    MIXIN_COMPATIBILITY = JavaVersion.VERSION_1_8
 }
-JavaVersion MIXIN_COMPATIBILITY_LEVEL = JAVA_COMPATIBILITY
-
 
 String modVersionSuffix = ''
 String artifactVersion = project.mod_version
@@ -98,7 +106,7 @@ stonecutter.const('QUILT', project.platform == 'quilt')
 stonecutter.const('FORGE', project.platform == 'forge')
 stonecutter.const('NEOFORGE', project.platform == 'neoforge')
 stonecutter.const('PAPER', project.platform == 'paper')
-
+stonecutter.swap("mod_version", "\"${fullArtifactVersion}\";")
 
 if (use_architectury_loom) {
     configurations {
@@ -110,14 +118,7 @@ dependencies {
     // loom
     if (use_architectury_loom) {
         minecraft "com.mojang:minecraft:${project.minecraft_version}"
-        mappings loom.layered {
-            mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-
-            // https://github.com/architectury/architectury-loom/issues/214
-            if (project.platform == 'neoforge' && project.hasProperty('yarn_mappings_patch')) {
-                it.mappings("dev.architectury:yarn-mappings-patch-neoforge:${project.yarn_mappings_patch}")
-            }
-        }
+        mappings loom.officialMojangMappings()
     }
     if (use_paperweight) {
         paperweight.paperDevBundle("${project.minecraft_version}-R0.1-SNAPSHOT")
@@ -128,12 +129,14 @@ dependencies {
     }
     if (project.platform == 'forge') {
         forge "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}"
+        compileOnly "org.spongepowered:mixin:0.8.5"
     }
     if (project.platform == 'neoforge') {
         neoForge "net.neoforged:neoforge:${project.neoforge_version}"
     }
     if (project.platform == 'paper') {
         compileOnly "io.papermc.paper:paper-api:${project.minecraft_version}-R0.1-SNAPSHOT"
+        paperweight.paperDevBundle("${project.minecraft_version}-R0.1-SNAPSHOT")
     }
 }
 
@@ -148,12 +151,9 @@ if (use_architectury_loom) {
 
         if (project.platform == 'forge') {
             forge {
-                mixinConfigs = [MIXIN_CONFIG_PATH]
+                mixinConfigs = MIXIN_CONFIG_PATHS
             }
         }
-    }
-    remapJar {
-        remapperIsolation = true
     }
 }
 
@@ -168,9 +168,9 @@ processResources {
     def good_files = [] as Set
     def all_files = [] as Set
     [
-            'fabric':   [MIXIN_CONFIG_PATH, 'fabric.mod.json'],
-            'forge':    [MIXIN_CONFIG_PATH, 'META-INF', 'META-INF/mods.toml', 'pack.mcmeta'],
-            'neoforge': [MIXIN_CONFIG_PATH, 'META-INF', 'META-INF/neoforge.mods.toml', 'pack.mcmeta'],
+            'fabric':   MIXIN_CONFIG_PATHS + ['fabric.mod.json'],
+            'forge':    MIXIN_CONFIG_PATHS + ['META-INF', 'META-INF/mods.toml', 'pack.mcmeta'],
+            'neoforge': MIXIN_CONFIG_PATHS + ['META-INF', 'META-INF/neoforge.mods.toml', 'pack.mcmeta'],
             'paper':    ['plugin.yml'],
     ].forEach { brand, paths ->
         all_files.addAll(paths)
@@ -193,7 +193,7 @@ processResources {
                         "homepage": project.mod_homepage,
                         "sources": project.mod_sources,
                         "issue": project.mod_issue,
-                        "java_compatibility_level": "JAVA_${MIXIN_COMPATIBILITY_LEVEL.ordinal() + 1}",
+                        "java_compatibility_level": "JAVA_${MIXIN_COMPATIBILITY.ordinal() + 1}",
                 ]
                 expand valueMap
             }
@@ -209,10 +209,10 @@ processResources {
 }
 
 // https://github.com/Fallen-Breath/yamlang
-//yamlang {
-//    targetSourceSets = [sourceSets.main]
-//    inputDir = LANG_DIR
-//}
+yamlang {
+    targetSourceSets = [sourceSets.main]
+    inputDir = LANG_DIR
+}
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
@@ -254,15 +254,14 @@ if (use_paperweight) {
     tasks.assemble {
         dependsOn(tasks.reobfJar)
     }
-    tasks {
-        runServer {
-            dependsOn(tasks.assemble)
-            minecraftVersion(project.minecraft_version)
-        }
-        reobfJar {
-            // This is an example of how you might change the output location for reobfJar. It's recommended not to do this
-            // for a variety of reasons, however it's asked frequently enough that an example of how to do it is included here.
-            outputJar = layout.buildDirectory.file("libs/${project.mod_name}-${fullProjectVersion}.jar")
-        }
-    }
 }
+
+relocator {
+    group = project.group
+    platform = project.platform
+    originalJar = project.file("build/libs/${project.mod_name}-${fullProjectVersion}.jar")
+    mergedJar = project.file("build/libs/${project.mod_name}-${fullProjectVersion}-relocate.jar")
+    mixins = MIXIN_CONFIG_PATHS
+}
+
+build.finalizedBy(relocate);

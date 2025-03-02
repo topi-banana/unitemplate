@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  matrix_prep:
+    uses: ./.github/workflows/matrix_prep.yml
+
+  build:
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+    with:
+      release: true
+
+  release:
+    needs:
+      - matrix_prep
+      - build
+    runs-on: ubuntu-latest
+
+    # allow the mod publish step to add asserts to release
+    # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#permissions-for-the-github_token
+    permissions:
+      contents: write
+
+    strategy:
+      matrix: ${{ fromJson(needs.matrix_prep.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: build-artifacts
+
+      - name: Read common properties
+        id: properties_g
+        uses: christian-draeger/read-properties@1.1.1
+        with:
+          path: gradle.properties
+          properties: 'mod_name mod_version'
+
+      - name: Prepare file information
+        id: file_info
+        run: |
+          shopt -s extglob
+          FILE_PATHS=$(ls "build-artifacts/${{ steps.properties_g.outputs.mod_name }}-v${{ steps.properties_g.outputs.mod_version }}-mc${{ matrix.version }}.jar")
+          if (( ${#FILE_PATHS[@]} != 1 )); then
+              echo "Error: Found ${#FILE_PATHS[@]} files, expected exactly 1"
+              exit 1
+          else
+              FILE_PATH=${FILE_PATHS[0]}
+          fi
+          
+          FILE_NAME=$(basename $FILE_PATH)
+          FILE_HASH=$(sha256sum $FILE_PATH | awk '{ print $1 }')
+          echo "path=$FILE_PATH" >> $GITHUB_OUTPUT
+          echo "name=$FILE_NAME" >> $GITHUB_OUTPUT
+          echo "hash=$FILE_HASH" >> $GITHUB_OUTPUT
+          cat $GITHUB_OUTPUT
+
+      - name: Prepare changelog
+        uses: actions/github-script@v7
+        id: changelog
+        with:
+          script: return process.env.CHANGELOG
+          result-encoding: string
+        env:
+          CHANGELOG: |-
+            ${{ github.event.release.body }}
+            
+            -------
+            
+            Build Information
+            
+            - File name: `${{ steps.file_info.outputs.name }}`
+            - SHA-256: `${{ steps.file_info.outputs.hash }}`
+            - Built from: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Publish Minecraft Mods
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          # https://modrinth.com/settings/pats
+          modrinth-id: VozTPxB4
+          modrinth-token: ${{ secrets.MODRINTH_API_TOKEN }}
+
+          github-tag:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+          files: ${{ steps.file_info.outputs.path }}
+
+          name: ${{ format('{0} v{1} for mc{2}', steps.properties_g.outputs.mod_name, steps.properties_g.outputs.mod_version, matrix.version) }}
+          version: ${{ format('v{1}-mc{0}', matrix.version, steps.properties_g.outputs.mod_version) }}
+
+          # WIP: always using beta channel
+          version-type: beta
+
+          modrinth-loaders: ${{ matrix.platforms }}
+          game-versions: ${{ matrix.game_versions }}
+          game-version-filter: any
+
+          github-changelog: ${{ github.event.release.body }}
+          modrinth-changelog: ${{ steps.changelog.outputs.result }}
+
+          retry-attempts: 3
+          retry-delay: 10000
